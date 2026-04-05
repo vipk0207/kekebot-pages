@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>할래말래 관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#08090e; --bg-card:#0e1018; --bg-panel:#131621; --bg-hover:#1a1f30;
+  --bd:#252a3d; --bd-glow:#3a4570;
+  --a:#4f8ef7; --a2:#7c5af0; --a3:#f05a5a;
+  --gold:#f5c842; --green:#3fcf8e; --cyan:#22d3ee;
+  --t1:#e8ecf5; --t2:#b0b8d0; --t3:#6a7490;
+  --r:12px; --r-sm:8px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--t1);font-family:'Noto Sans KR',sans-serif;min-height:100vh;font-size:15px;}
+
+/* ── 로딩 ── */
+#loadingScreen{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:var(--bg);flex-direction:column;gap:16px;}
+.spinner{width:40px;height:40px;border:3px solid var(--bd);border-top-color:var(--a);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── 로그인 ── */
+#loginScreen{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 0%,#120830,#05030f);flex-direction:column;gap:20px;}
+.login-box{background:var(--bg-card);border:1px solid var(--bd);border-radius:16px;padding:32px 40px;width:340px;max-width:90vw;display:flex;flex-direction:column;gap:14px;}
+.login-box h2{font-size:18px;font-weight:700;text-align:center;}
+.login-box p{font-size:13px;color:var(--t2);text-align:center;}
+.login-guild-select{background:var(--bg);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-family:'Noto Sans KR',sans-serif;font-size:14px;padding:11px 14px;width:100%;outline:none;cursor:pointer;}
+.login-box input{background:var(--bg);border:1px solid var(--bd);border-radius:8px;color:var(--t1);font-family:'Noto Sans KR',sans-serif;font-size:15px;padding:12px 16px;outline:none;width:100%;letter-spacing:3px;}
+.login-box input:focus,.login-guild-select:focus{border-color:var(--a);}
+.login-btn{background:linear-gradient(135deg,var(--a),var(--a2));border:none;border-radius:8px;color:#fff;font-family:'Noto Sans KR',sans-serif;font-size:15px;font-weight:700;padding:13px;cursor:pointer;transition:opacity .2s;}
+.login-btn:hover{opacity:.85;}
+.login-err{color:var(--a3);font-size:13px;text-align:center;min-height:18px;}
+
+/* ── 앱 ── */
+#app{display:none;min-height:100vh;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,9,14,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;gap:12px;}
+.topbar-left{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.guild-badge{background:rgba(79,142,247,0.12);border:1px solid rgba(79,142,247,0.3);border-radius:8px;padding:4px 12px;font-size:13px;font-weight:700;color:var(--a);cursor:pointer;transition:all .2s;}
+.guild-badge:hover{background:rgba(79,142,247,0.2);}
+.nav{display:flex;gap:2px;flex-wrap:wrap;overflow:hidden;}
+.nav-btn{background:none;border:none;color:var(--t2);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;padding:6px 11px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.nav-btn:hover{color:var(--t1);background:var(--bg-hover);}
+.nav-btn.active{color:var(--a);background:rgba(79,142,247,0.12);}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.role-badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+.role-admin{background:rgba(245,200,66,0.15);color:var(--gold);border:1px solid rgba(245,200,66,0.35);}
+.role-member{background:rgba(79,142,247,0.12);color:var(--a);border:1px solid rgba(79,142,247,0.3);}
+.icon-btn{background:none;border:1px solid var(--bd);border-radius:6px;color:var(--t2);font-size:12px;padding:4px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s;}
+.icon-btn:hover{border-color:var(--a);color:var(--a);}
+.sync-wrap{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t3);}
+.sync-dot{width:6px;height:6px;border-radius:50%;}
+.sync-ok{background:var(--green);} .sync-err{background:var(--a3);} .sync-ing{background:var(--gold);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── 페이지 ── */
+.page{display:none;padding:24px 28px;max-width:1440px;margin:0 auto;animation:fadeIn .25s ease;}
+.page.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.page-title{font-size:22px;font-weight:700;margin-bottom:18px;}
+.page-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+
+/* ── 카드 ── */
+.card{background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--r);padding:20px;}
+.card-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;display:flex;align-items:center;gap:7px;}
+.card-title::before{content:'';width:3px;height:12px;background:var(--a);border-radius:2px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+/* ── 통계 카드 ── */
+.stat-card{background:var(--bg-card);border:1px solid var(--bd);border-radius:var(--r);padding:18px 20px;}
+.stat-label{font-size:12px;color:var(--t3);font-weight:500;margin-bottom:6px;}
+.stat-value{font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--t1);}
+.stat-sub{font-size:12px;color:var(--t3);margin-top:4px;}
+
+/* ── 테이블 ── */
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--bd);}
+table{width:100%;border-collapse:collapse;background:var(--bg-card);}
+thead th{text-align:left;padding:11px 14px;font-size:12px;font-weight:700;color:var(--t3);border-bottom:1px solid var(--bd);white-space:nowrap;background:var(--bg-panel);}
+tbody tr{border-bottom:1px solid rgba(37,42,61,0.7);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--bg-hover);}
+tbody td{padding:12px 14px;font-size:14px;font-weight:500;vertical-align:middle;color:var(--t1);}
+.rn{font-size:12px;font-weight:700;color:var(--t3);}
+.rn.r1{color:#f5c842;} .rn.r2{color:#b0b8d0;} .rn.r3{color:#cd7c2f;}
+
+/* ── 입력 ── */
+.si{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r-sm);color:var(--t1);font-family:'Noto Sans KR',sans-serif;font-size:14px;padding:10px 14px;outline:none;transition:border-color .2s;}
+.si:focus{border-color:var(--a);}
+.si::placeholder{color:var(--t3);}
+.si-sm{padding:7px 12px;font-size:13px;}
+.btn{border:none;border-radius:var(--r-sm);font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;padding:9px 18px;cursor:pointer;transition:all .2s;}
+.btn-primary{background:var(--a);color:#fff;} .btn-primary:hover{opacity:.85;}
+.btn-success{background:var(--green);color:#111;} .btn-success:hover{opacity:.85;}
+.btn-danger{background:var(--a3);color:#fff;} .btn-danger:hover{opacity:.85;}
+.btn-ghost{background:none;border:1px solid var(--bd);color:var(--t2);} .btn-ghost:hover{border-color:var(--a);color:var(--a);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+
+/* ── 배지 ── */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:700;}
+.b-green{background:rgba(63,207,142,0.15);color:var(--green);border:1px solid rgba(63,207,142,0.3);}
+.b-gold{background:rgba(245,200,66,0.15);color:var(--gold);border:1px solid rgba(245,200,66,0.3);}
+.b-red{background:rgba(240,90,90,0.12);color:var(--a3);border:1px solid rgba(240,90,90,0.25);}
+.b-blue{background:rgba(79,142,247,0.12);color:var(--a);border:1px solid rgba(79,142,247,0.25);}
+
+/* ── 토스트 ── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg-card);border:1px solid var(--bd);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:500;z-index:9999;transition:all .3s;opacity:0;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow);}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ── 모달 ── */
+.modal-bg{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg-card);border:1px solid var(--bd);border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:20px;}
+.modal-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.modal-row label{font-size:12px;color:var(--t3);font-weight:600;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+/* ── 검색/필터 바 ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+.filter-btn{background:var(--bg-panel);border:1px solid var(--bd);border-radius:6px;color:var(--t2);font-size:12px;padding:5px 12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s;}
+.filter-btn:hover,.filter-btn.active{border-color:var(--a);color:var(--a);background:rgba(79,142,247,0.1);}
+
+/* ── 페이지네이션 ── */
+.pagination{display:flex;gap:4px;justify-content:center;margin-top:14px;flex-wrap:wrap;}
+.page-btn{background:var(--bg-panel);border:1px solid var(--bd);border-radius:5px;color:var(--t2);font-size:12px;padding:5px 10px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;min-width:32px;text-align:center;}
+.page-btn.active{background:var(--a);border-color:var(--a);color:#fff;}
+.page-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* ── 보스 점수 컬체크 ── */
+.col-o{display:inline-block;background:rgba(63,207,142,0.2);color:var(--green);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(63,207,142,0.4);cursor:pointer;}
+.col-x{display:inline-block;background:rgba(240,90,90,0.12);color:var(--a3);font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,90,90,0.3);cursor:pointer;}
+.col-empty{color:var(--t3);font-size:13px;cursor:pointer;}
+
+/* ── 분배금 ── */
+.dist-total{font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--gold);}
+
+@media(max-width:900px){
+  .nav{display:none;}
+  .page{padding:12px;}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen"><div class="spinner"></div><div style="font-size:13px;color:var(--t3)">불러오는 중...</div></div>
+
+<!-- 로그인 -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h2 id="loginTitle">길드 관리</h2>
+    <p id="loginSub" style="color:var(--t2);text-align:center;font-size:13px">비밀번호를 입력하세요</p>
+    <input type="password" id="loginPw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- 앱 -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="guild-badge" id="guildBadge" onclick="changeGuild()">길드</span>
+      <nav class="nav">
+        <button class="nav-btn active" onclick="showPage('main',this)">메인</button>
+        <button class="nav-btn" onclick="showPage('members',this)">명단</button>
+        <button class="nav-btn" onclick="showPage('bid',this)">입찰점수</button>
+        <button class="nav-btn" onclick="showPage('items',this)">아이템내역</button>
+        <button class="nav-btn" onclick="showPage('prices',this)">아이템가격</button>
+        <button class="nav-btn" onclick="showPage('boscol',this)">보스컬렉</button>
+        <button class="nav-btn" onclick="showPage('acccol',this)">악세컬렉</button>
+        <button class="nav-btn" onclick="showPage('saddle',this)">안장</button>
+        <button class="nav-btn" onclick="showPage('attendlog',this)">참여체크</button>
+        <button class="nav-btn" onclick="showPage('distrib',this)">분배금</button>
+        <button class="nav-btn" onclick="showPage('bossscores',this)">보스점수표</button>
+      </nav>
+    </div>
+    <div class="topbar-right">
+      <div class="sync-wrap"><span class="sync-dot sync-ok" id="syncDot"></span><span id="syncStatus">준비됨</span></div>
+      <span class="role-badge" id="roleBadge"></span>
+      <button class="icon-btn" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- ── 메인 ── -->
+  <div class="page active" id="page-main">
+    <div class="page-title">대시보드</div>
+    <div class="grid-4" style="margin-bottom:16px">
+      <div class="stat-card"><div class="stat-label">총 길드원</div><div class="stat-value" id="statTotal">—</div></div>
+      <div class="stat-card"><div class="stat-label">평균 참여점수</div><div class="stat-value" id="statAvgScore">—</div></div>
+      <div class="stat-card"><div class="stat-label">총 보스 처치</div><div class="stat-value" id="statBossKill">—</div></div>
+      <div class="stat-card"><div class="stat-label">이번 시즌</div><div class="stat-value" id="statSeason" style="font-size:16px;padding-top:4px">—</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">참여점수 TOP 10</div>
+        <div id="scoreTop10"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">최근 보스 처치</div>
+        <div id="recentBoss"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 명단 ── -->
+  <div class="page" id="page-members">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">명단</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="si si-sm" id="memberSearch" placeholder="캐릭명/길드명 검색" oninput="filterMembers()" style="width:200px">
+        <select class="si si-sm" id="memberClanFilter" onchange="filterMembers()" style="width:120px"><option value="">전체 길드</option></select>
+        <div id="memberSortBtns" class="filter-bar" style="margin:0">
+          <button class="filter-btn active" onclick="setMemberSort('score',this)">점수순</button>
+          <button class="filter-btn" onclick="setMemberSort('power',this)">전투력순</button>
+          <button class="filter-btn" onclick="setMemberSort('char',this)">이름순</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="memberAddBtn" onclick="openMemberAdd()" style="display:none">+ 추가</button>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--t3);margin-bottom:10px" id="memberCount"></div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>길드명</th><th>캐릭명</th><th>전투력</th><th>직업</th><th>참여점수</th><th>참여율</th><th id="memberActionHead"></th></tr></thead>
+      <tbody id="memberTable"></tbody>
+    </table></div>
+    <div class="pagination" id="memberPagination"></div>
+  </div>
+
+  <!-- ── 입찰점수 ── -->
+  <div class="page" id="page-bid">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">입찰점수</div>
+      <input class="si si-sm" id="bidSearch" placeholder="검색..." oninput="filterBid()" style="width:200px">
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>길드명</th><th>캐릭명</th><th>전투력</th><th>참여율</th><th>점수</th></tr></thead>
+      <tbody id="bidTable"></tbody>
+    </table></div>
+    <div class="pagination" id="bidPagination"></div>
+  </div>
+
+  <!-- ── 아이템내역 ── -->
+  <div class="page" id="page-items">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">아이템내역</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="si si-sm" id="itemSearch" placeholder="검색..." oninput="filterItems()" style="width:200px">
+        <button class="btn btn-primary btn-sm" id="itemAddBtn" onclick="openItemAdd()" style="display:none">+ 추가</button>
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>날짜</th><th>아이템명</th><th>낙찰자</th><th>낙찰가</th><th>지급여부</th><th id="itemActionHead"></th></tr></thead>
+      <tbody id="itemTable"></tbody>
+    </table></div>
+    <div class="pagination" id="itemPagination"></div>
+  </div>
+
+  <!-- ── 아이템가격 ── -->
+  <div class="page" id="page-prices">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">아이템가격</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input class="si si-sm" id="priceSearch" placeholder="검색..." oninput="filterPrices()" style="width:200px">
+        <button class="btn btn-primary btn-sm" id="priceAddBtn" onclick="openPriceAdd()" style="display:none">+ 추가</button>
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>아이템명</th><th>기준가</th><th>메모</th><th id="priceActionHead"></th></tr></thead>
+      <tbody id="priceTable"></tbody>
+    </table></div>
+  </div>
+
+  <!-- ── 보스컬렉 ── -->
+  <div class="page" id="page-boscol">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">보스컬렉</div>
+      <input class="si si-sm" id="boscolSearch" placeholder="캐릭명 검색..." oninput="filterBoscol()" style="width:200px">
+    </div>
+    <div class="tw"><table><thead><tr id="boscolHead"></tr></thead><tbody id="boscolTable"></tbody></table></div>
+    <div class="pagination" id="boscolPagination"></div>
+  </div>
+
+  <!-- ── 악세컬렉 ── -->
+  <div class="page" id="page-acccol">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">악세컬렉</div>
+      <input class="si si-sm" id="acccolSearch" placeholder="캐릭명 검색..." oninput="filterAcccol()" style="width:200px">
+    </div>
+    <div class="tw"><table><thead><tr id="acccolHead"></tr></thead><tbody id="acccolTable"></tbody></table></div>
+    <div class="pagination" id="acccolPagination"></div>
+  </div>
+
+  <!-- ── 안장 ── -->
+  <div class="page" id="page-saddle">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">안장</div>
+      <input class="si si-sm" id="saddleSearch" placeholder="캐릭명 검색..." oninput="filterSaddle()" style="width:200px">
+    </div>
+    <div class="tw"><table><thead><tr id="saddleHead"></tr></thead><tbody id="saddleTable"></tbody></table></div>
+    <div class="pagination" id="saddlePagination"></div>
+  </div>
+
+  <!-- ── 참여체크 ── -->
+  <div class="page" id="page-attendlog">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">참여체크</div>
+      <input class="si si-sm" id="attendlogSearch" placeholder="캐릭명 검색..." oninput="filterAttendlog()" style="width:200px">
+    </div>
+    <div class="tw"><table><thead><tr id="attendlogHead"></tr></thead><tbody id="attendlogTable"></tbody></table></div>
+    <div class="pagination" id="attendlogPagination"></div>
+  </div>
+
+  <!-- ── 분배금 ── -->
+  <div class="page" id="page-distrib">
+    <div class="page-title">분배금</div>
+    <div class="card" style="margin-bottom:16px" id="distribAdminCard">
+      <div class="card-title">총 분배금 설정</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="si" id="distribTotalInput" placeholder="총 분배금 입력" style="width:200px" type="number">
+        <button class="btn btn-primary" onclick="saveDistribTotal()">저장</button>
+        <button class="btn btn-ghost" onclick="resetDistrib()">분배 초기화</button>
+        <button class="btn btn-ghost" onclick="resetScore()">점수 초기화</button>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-bottom:16px">
+      <div class="stat-card"><div class="stat-label">총 분배금</div><div class="dist-total" id="distribTotalDisplay">—</div></div>
+      <div class="stat-card"><div class="stat-label">1점당 분배금</div><div class="dist-total" id="distribPerPoint" style="font-size:20px">—</div></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>길드명</th><th>캐릭명</th><th>전투력</th><th>참여점수</th><th>참여율</th><th>분배금</th><th>지급캐릭</th><th>지급여부</th><th id="distribActionHead"></th></tr></thead>
+      <tbody id="distribTable"></tbody>
+    </table></div>
+    <div class="pagination" id="distribPagination"></div>
+  </div>
+
+  <!-- ── 보스점수표 ── -->
+  <div class="page" id="page-bossscores">
+    <div class="page-top">
+      <div class="page-title" style="margin:0">보스 점수표</div>
+      <button class="btn btn-primary btn-sm" id="bossAddBtn" onclick="openBossAdd()" style="display:none">+ 보스 추가</button>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>보스명</th><th>점수</th><th>젠주기</th><th>평균소요</th><th>처치수</th><th id="bossActionHead"></th></tr></thead>
+      <tbody id="bossTable"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div id="toast"></div>
+
+<!-- 공용 모달 -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" id="modalConfirmBtn" onclick="modalConfirm()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, setDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+// ══════════════════════════════════════════
+// Firebase 설정 (본인 프로젝트 설정으로 교체)
+// ══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "guild-manager-c3056.firebaseapp.com",
+  projectId: "guild-manager-c3056",
+  storageBucket: "guild-manager-c3056.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+// ══════════════════════════════════════════
+// 상태
+// ══════════════════════════════════════════
+let STATE = {
+  guildId:   null,
+  guildName: '길드',
+  role:      'none',   // admin | member | none
+  guilds:    [],       // { id, name, passAdmin, passMember }
+  members:   [],
+  items:     [],
+  prices:    [],
+  bossScores:[],
+  boscol:    { cols:[], rows:[] },
+  acccol:    { cols:[], rows:[] },
+  saddle:    { cols:[], rows:[] },
+  attendlog: { cols:[], rows:[] },
+  bid:       [],
+  distrib:   { total:0, list:[] },
+};
+
+let PAGE_SIZE = 20;
+let pages = { members:1, bid:1, items:1, boscol:1, acccol:1, saddle:1, attendlog:1, distrib:1 };
+let filters = { members:'', bid:'', items:'', boscol:'', acccol:'', saddle:'', attendlog:'', prices:'' };
+let memberSort = 'score', memberClan = '';
+
+// ══════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════
+function toast(msg, color='var(--t1)') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.color = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function setSS(s) {
+  const dot=document.getElementById('syncDot'), txt=document.getElementById('syncStatus');
+  if(s==='ok'){dot.className='sync-dot sync-ok';txt.textContent='동기화됨';}
+  if(s==='err'){dot.className='sync-dot sync-err';txt.textContent='오류';}
+  if(s==='ing'){dot.className='sync-dot sync-ing';txt.textContent='불러오는 중...';}
+}
+
+function guildCol(colName) {
+  return collection(db, 'guilds', STATE.guildId, colName);
+}
+function guildDoc(colName, docId) {
+  return doc(db, 'guilds', STATE.guildId, colName, docId);
+}
+function guildDocRef() {
+  return doc(db, 'guilds', STATE.guildId);
+}
+
+function renderPagination(elId, total, cur, cb) {
+  const pages = Math.ceil(total / PAGE_SIZE) || 1;
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  let html = '';
+  for (let i = 1; i <= pages; i++) {
+    html += `<button class="page-btn${i===cur?' active':''}" onclick="(${cb})(${i})">${i}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function numFmt(n) { return (n||0).toLocaleString(); }
+function pctBadge(rate) {
+  const n = parseFloat(String(rate||'').replace('%',''))||0;
+  const cl = n>=80?'b-green':n>=50?'b-gold':'b-red';
+  return `<span class="badge ${cl}">${rate||'—'}</span>`;
+}
+
+// ══════════════════════════════════════════
+// 길드 목록 로드
+// ══════════════════════════════════════════
+async function loadGuilds(targetGuildId) {
+  try {
+    if (targetGuildId) {
+      // 먼저 guildId로 직접 시도
+      let gdoc = await getDoc(doc(db, 'guilds', targetGuildId));
+      
+      // 없으면 slug로 검색
+      if (!gdoc.exists()) {
+        const slugSnap = await getDocs(
+          query(collection(db, 'guilds'), where('slug', '==', targetGuildId))
+        );
+        if (!slugSnap.empty) gdoc = slugSnap.docs[0];
+      }
+
+      if (gdoc && gdoc.exists()) {
+        const guildData = { id: gdoc.id, ...gdoc.data() };
+        STATE.guilds = [guildData];
+        document.getElementById('loginTitle').textContent = guildData.name || '길드 관리';
+        document.getElementById('loginSub').textContent   = guildData.name + ' 비밀번호를 입력하세요';
+        STATE._urlGuildId = gdoc.id; // 실제 guildId(디코ID) 저장
+      } else {
+        document.getElementById('loginErr').textContent = '존재하지 않는 길드입니다.';
+        document.getElementById('loginTitle').textContent = '길드를 찾을 수 없음';
+      }
+    } else {
+      // 전체 길드 로드 (직접 접속 시)
+      const snap = await getDocs(collection(db, 'guilds'));
+      STATE.guilds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('loginTitle').textContent = '길드 관리 시스템';
+      document.getElementById('loginSub').textContent   = '비밀번호를 입력하세요';
+    }
+  } catch(e) { console.error('길드 목록 로드 실패:', e); }
+}
+
+// ══════════════════════════════════════════
+// 로그인/로그아웃
+// ══════════════════════════════════════════
+async function doLogin() {
+  // URL 파라미터 guildId 우선, 없으면 전체 목록에서 첫 번째
+  const guildId = STATE._urlGuildId || (STATE.guilds[0]?.id);
+  const pw      = document.getElementById('loginPw').value;
+  const err     = document.getElementById('loginErr');
+
+  if (!guildId) { err.textContent = '길드 URL이 올바르지 않습니다.'; return; }
+  if (!pw)      { err.textContent = '비밀번호를 입력해주세요.'; return; }
+
+  const guild = STATE.guilds.find(g => g.id === guildId);
+  if (!guild)  { err.textContent = '길드를 찾을 수 없습니다.'; return; }
+
+  let role = 'none';
+  if (pw === (guild.passAdmin  || '')) role = 'admin';
+  else if (pw === (guild.passMember || '')) role = 'member';
+  else { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
+
+  STATE.guildId   = guildId;
+  STATE.guildName = guild.name || guildId;
+  STATE.role      = role;
+
+  sessionStorage.setItem('guildId', guildId);
+  sessionStorage.setItem('role', role);
+
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('guildBadge').textContent = STATE.guildName;
+  document.getElementById('roleBadge').textContent  = role === 'admin' ? '관리자' : '멤버';
+  document.getElementById('roleBadge').className    = 'role-badge ' + (role==='admin'?'role-admin':'role-member');
+
+  // 관리자 전용 버튼 표시
+  ['memberAddBtn','itemAddBtn','priceAddBtn','bossAddBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = role==='admin' ? '' : 'none';
+  });
+  ['memberActionHead','itemActionHead','priceActionHead','bossActionHead','distribActionHead'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = role==='admin' ? '관리' : '';
+  });
+  document.getElementById('distribAdminCard').style.display = role==='admin' ? '' : 'none';
+
+  await loadAll();
+}
+
+window.logout = function() {
+  sessionStorage.clear();
+  STATE.guildId = null; STATE.role = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+};
+
+window.changeGuild = function() {
+  if (!confirm('로그아웃하시겠습니까?')) return;
+  logout();
+};
+
+// ══════════════════════════════════════════
+// 전체 데이터 로드
+// ══════════════════════════════════════════
+async function loadAll() {
+  setSS('ing');
+  try {
+    await Promise.all([
+      loadMembers(),
+      loadBossScores(),
+    ]);
+    renderMain();
+    setSS('ok');
+  } catch(e) {
+    console.error('[loadAll]', e);
+    setSS('err');
+    toast('데이터 로드 실패: ' + e.message, 'var(--a3)');
+  }
+}
+
+// ══════════════════════════════════════════
+// 멤버
+// ══════════════════════════════════════════
+async function loadMembers() {
+  const snap = await getDocs(guildCol('members'));
+  STATE.members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+function getFilteredMembers() {
+  let list = [...STATE.members];
+  const q = filters.members.toLowerCase();
+  if (q) list = list.filter(m =>
+    (m.char||'').toLowerCase().includes(q) ||
+    (m.clan||'').toLowerCase().includes(q) ||
+    (m.cls||'').toLowerCase().includes(q)
+  );
+  if (memberClan) list = list.filter(m => m.clan === memberClan);
+  if (memberSort === 'score')  list.sort((a,b) => (b.totalScore||0)-(a.totalScore||0));
+  if (memberSort === 'power')  list.sort((a,b) => (b.power||0)-(a.power||0));
+  if (memberSort === 'char')   list.sort((a,b) => (a.char||'').localeCompare(b.char||'','ko'));
+  return list;
+}
+
+function renderMembers() {
+  const list  = getFilteredMembers();
+  const isAdm = STATE.role === 'admin';
+  const start = (pages.members-1)*PAGE_SIZE;
+  const pageList = list.slice(start, start+PAGE_SIZE);
+  const total = STATE.members.length;
+
+  document.getElementById('memberCount').textContent = `${list.length}명 표시 (전체 ${total}명)`;
+
+  // 길드 필터 옵션 업데이트
+  const clans = [...new Set(STATE.members.map(m=>m.clan).filter(Boolean))].sort();
+  const sel = document.getElementById('memberClanFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체 길드</option>';
+  clans.forEach(c => { const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o); });
+  sel.value = cur;
+
+  document.getElementById('memberTable').innerHTML = pageList.map((m,i) => {
+    const gi = start+i;
+    const pct = m.attendRate != null ? Math.round(m.attendRate*100)+'%' : '—';
+    const actTd = isAdm ? `<td onclick="event.stopPropagation()"><div style="display:flex;gap:5px">
+      <button class="btn btn-ghost btn-sm" onclick="openMemberEdit('${m.id}')">수정</button>
+      <button class="btn btn-sm" style="background:none;border:1px solid rgba(240,90,90,.3);color:var(--a3);font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer" onclick="deleteMember('${m.id}','${(m.char||'').replace(/'/g,"\\'")}')">삭제</button>
+    </div></td>` : '';
+    return `<tr>
+      <td><span class="rn${gi<3?' r'+(gi+1):''}">${gi+1}</span></td>
+      <td style="color:var(--t2)">${m.clan||'—'}</td>
+      <td style="font-weight:700;color:var(--a)">${m.char||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${numFmt(m.power)}</td>
+      <td>${m.cls||'—'}</td>
+      <td style="font-weight:700;color:var(--gold)">${numFmt(m.totalScore)}</td>
+      <td>${pctBadge(pct)}</td>
+      ${actTd}
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+
+  renderPagination('memberPagination', list.length, pages.members,
+    `(p)=>{window._memberPage=p;pages.members=p;renderMembers()}`);
+}
+
+window.filterMembers = function() {
+  filters.members = document.getElementById('memberSearch').value;
+  memberClan = document.getElementById('memberClanFilter').value;
+  pages.members = 1;
+  renderMembers();
+};
+window.setMemberSort = function(s, btn) {
+  memberSort = s; pages.members = 1;
+  document.querySelectorAll('#memberSortBtns .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMembers();
+};
+
+window.openMemberAdd = function() {
+  openModal('멤버 추가', `
+    <div class="modal-row"><label>길드명</label><input class="si" id="mClan" placeholder="길드명"></div>
+    <div class="modal-row"><label>캐릭명 *</label><input class="si" id="mChar" placeholder="캐릭명"></div>
+    <div class="modal-row"><label>직업</label><input class="si" id="mCls" placeholder="직업"></div>
+    <div class="modal-row"><label>전투력</label><input class="si" id="mPower" placeholder="전투력" type="number"></div>
+  `, async () => {
+    const char = document.getElementById('mChar').value.trim();
+    if (!char) throw new Error('캐릭명을 입력해주세요');
+    await addDoc(guildCol('members'), {
+      clan: document.getElementById('mClan').value.trim(),
+      char, cls: document.getElementById('mCls').value.trim(),
+      power: parseInt(document.getElementById('mPower').value)||0,
+      totalScore:0, bossCount:0,
+      createdAt: serverTimestamp(),
+    });
+    await loadMembers(); renderMembers();
+    toast('멤버 추가 완료', 'var(--green)');
+  });
+};
+
+window.openMemberEdit = function(id) {
+  const m = STATE.members.find(x=>x.id===id);
+  if (!m) return;
+  openModal('멤버 수정', `
+    <div class="modal-row"><label>길드명</label><input class="si" id="mClan" value="${m.clan||''}"></div>
+    <div class="modal-row"><label>캐릭명 *</label><input class="si" id="mChar" value="${m.char||''}"></div>
+    <div class="modal-row"><label>직업</label><input class="si" id="mCls" value="${m.cls||''}"></div>
+    <div class="modal-row"><label>전투력</label><input class="si" id="mPower" value="${m.power||0}" type="number"></div>
+  `, async () => {
+    const char = document.getElementById('mChar').value.trim();
+    if (!char) throw new Error('캐릭명을 입력해주세요');
+    await updateDoc(guildDoc('members', id), {
+      clan: document.getElementById('mClan').value.trim(),
+      char, cls: document.getElementById('mCls').value.trim(),
+      power: parseInt(document.getElementById('mPower').value)||0,
+      updatedAt: serverTimestamp(),
+    });
+    await loadMembers(); renderMembers();
+    toast('수정 완료', 'var(--green)');
+  });
+};
+
+window.deleteMember = function(id, name) {
+  if (!confirm(`"${name}" 삭제할까요?`)) return;
+  deleteDoc(guildDoc('members', id))
+    .then(async () => { await loadMembers(); renderMembers(); toast('삭제 완료', 'var(--green)'); })
+    .catch(e => toast('삭제 실패: '+e.message, 'var(--a3)'));
+};
+
+// ══════════════════════════════════════════
+// 보스점수표
+// ══════════════════════════════════════════
+async function loadBossScores() {
+  const snap = await getDocs(guildCol('bosses'));
+  STATE.bossScores = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a,b) => (b.score||0)-(a.score||0));
+}
+
+function renderBossScores() {
+  const isAdm = STATE.role === 'admin';
+  document.getElementById('bossTable').innerHTML = STATE.bossScores.map((b,i) => {
+    const gen = b.genMinutes
+      ? `${Math.floor(b.genMinutes/60)>0?Math.floor(b.genMinutes/60)+'h':''}${b.genMinutes%60>0?b.genMinutes%60+'m':''}`
+      : '수동';
+    const avg = b.avgMin ? b.avgMin+'분' : '—';
+    const actTd = isAdm ? `<td onclick="event.stopPropagation()"><div style="display:flex;gap:5px">
+      <button class="btn btn-ghost btn-sm" onclick="openBossEdit('${b.id}')">수정</button>
+      <button class="btn btn-sm" style="background:none;border:1px solid rgba(240,90,90,.3);color:var(--a3);font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer" onclick="deleteBoss('${b.id}','${(b.name||'').replace(/'/g,"\\'")}')">삭제</button>
+    </div></td>` : '';
+    return `<tr>
+      <td><span class="rn">${i+1}</span></td>
+      <td style="font-weight:700">${b.name||'—'}</td>
+      <td><span class="badge b-gold">${b.score||0}점</span></td>
+      <td style="color:var(--t2)">${gen}</td>
+      <td style="color:var(--t2)">${avg}</td>
+      <td style="color:var(--t3)">${b.killCount||0}회</td>
+      ${actTd}
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+}
+
+window.openBossAdd = function() {
+  openModal('보스 추가', `
+    <div class="modal-row"><label>보스명 *</label><input class="si" id="bName" placeholder="보스명"></div>
+    <div class="modal-row"><label>점수 *</label><input class="si" id="bScore" placeholder="점수" type="number"></div>
+    <div class="modal-row"><label>젠주기 (분, 비워두면 수동)</label><input class="si" id="bGen" placeholder="예: 60 = 1시간마다" type="number"></div>
+  `, async () => {
+    const name = document.getElementById('bName').value.trim();
+    if (!name) throw new Error('보스명을 입력해주세요');
+    const score = parseInt(document.getElementById('bScore').value)||0;
+    const genMinutes = parseInt(document.getElementById('bGen').value)||null;
+    await addDoc(guildCol('bosses'), { name, score, genMinutes, avgMin:null, killCount:0, createdAt:serverTimestamp() });
+    await loadBossScores(); renderBossScores();
+    toast('보스 추가 완료', 'var(--green)');
+  });
+};
+
+window.openBossEdit = function(id) {
+  const b = STATE.bossScores.find(x=>x.id===id);
+  if (!b) return;
+  openModal('보스 수정', `
+    <div class="modal-row"><label>보스명 *</label><input class="si" id="bName" value="${b.name||''}"></div>
+    <div class="modal-row"><label>점수</label><input class="si" id="bScore" value="${b.score||0}" type="number"></div>
+    <div class="modal-row"><label>젠주기 (분)</label><input class="si" id="bGen" value="${b.genMinutes||''}" type="number"></div>
+  `, async () => {
+    const name = document.getElementById('bName').value.trim();
+    if (!name) throw new Error('보스명을 입력해주세요');
+    await updateDoc(guildDoc('bosses', id), {
+      name, score: parseInt(document.getElementById('bScore').value)||0,
+      genMinutes: parseInt(document.getElementById('bGen').value)||null,
+    });
+    await loadBossScores(); renderBossScores();
+    toast('수정 완료', 'var(--green)');
+  });
+};
+
+window.deleteBoss = function(id, name) {
+  if (!confirm(`"${name}" 삭제할까요?`)) return;
+  deleteDoc(guildDoc('bosses', id))
+    .then(async () => { await loadBossScores(); renderBossScores(); toast('삭제 완료', 'var(--green)'); })
+    .catch(e => toast('삭제 실패: '+e.message, 'var(--a3)'));
+};
+
+// ══════════════════════════════════════════
+// 입찰점수
+// ══════════════════════════════════════════
+async function loadBid() {
+  setSS('ing');
+  try {
+    const snap = await getDocs(guildCol('bid_scores'));
+    STATE.bid = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.score||0)-(a.score||0));
+    renderBid();
+    setSS('ok');
+  } catch(e) { setSS('err'); toast('로드 실패', 'var(--a3)'); }
+}
+
+function renderBid() {
+  const q = filters.bid.toLowerCase();
+  let list = STATE.bid.filter(m =>
+    !q || (m.char||'').toLowerCase().includes(q) || (m.clan||'').toLowerCase().includes(q)
+  );
+  const start = (pages.bid-1)*PAGE_SIZE;
+  document.getElementById('bidTable').innerHTML = list.slice(start, start+PAGE_SIZE).map((m,i) => `<tr>
+    <td><span class="rn${(start+i)<3?' r'+(start+i+1):''}">${start+i+1}</span></td>
+    <td style="color:var(--t2)">${m.clan||'—'}</td>
+    <td style="font-weight:700;color:var(--a)">${m.char||'—'}</td>
+    <td>${numFmt(m.power)}</td>
+    <td>${pctBadge(m.attendRate!=null?Math.round(m.attendRate*100)+'%':'—')}</td>
+    <td style="font-weight:700;color:var(--gold)">${numFmt(m.score)}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+  renderPagination('bidPagination', list.length, pages.bid, `(p)=>{pages.bid=p;renderBid()}`);
+}
+window.filterBid = function() { filters.bid=document.getElementById('bidSearch').value; pages.bid=1; renderBid(); };
+
+// ══════════════════════════════════════════
+// 아이템내역
+// ══════════════════════════════════════════
+async function loadItems() {
+  setSS('ing');
+  try {
+    const snap = await getDocs(guildCol('items'));
+    STATE.items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    renderItems();
+    setSS('ok');
+  } catch(e) { setSS('err'); toast('로드 실패', 'var(--a3)'); }
+}
+
+function renderItems() {
+  const isAdm = STATE.role === 'admin';
+  const q = filters.items.toLowerCase();
+  let list = STATE.items.filter(m =>
+    !q || (m.name||'').toLowerCase().includes(q) || (m.winner||'').toLowerCase().includes(q)
+  );
+  const start = (pages.items-1)*PAGE_SIZE;
+  document.getElementById('itemTable').innerHTML = list.slice(start, start+PAGE_SIZE).map((m,i) => {
+    const paid = m.paid;
+    const paidEl = paid
+      ? `<span class="col-o" onclick="${isAdm?`toggleItemPaid('${m.id}',true)`:''}" >지급</span>`
+      : `<span class="col-empty" onclick="${isAdm?`toggleItemPaid('${m.id}',false)`:''}" style="cursor:${isAdm?'pointer':'default'}">—</span>`;
+    const actTd = isAdm
+      ? `<td><button class="btn btn-sm" style="background:none;border:1px solid rgba(240,90,90,.3);color:var(--a3);font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer" onclick="deleteItem('${m.id}','${(m.name||'').replace(/'/g,"\\'")}')">삭제</button></td>` : '';
+    return `<tr>
+      <td><span class="rn">${start+i+1}</span></td>
+      <td style="color:var(--t3);font-size:13px">${m.date||'—'}</td>
+      <td style="font-weight:600">${m.name||'—'}</td>
+      <td style="color:var(--a)">${m.winner||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--gold)">${numFmt(m.price)}</td>
+      <td>${paidEl}</td>
+      ${actTd}
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+  renderPagination('itemPagination', list.length, pages.items, `(p)=>{pages.items=p;renderItems()}`);
+}
+
+window.filterItems = function() { filters.items=document.getElementById('itemSearch').value; pages.items=1; renderItems(); };
+
+window.toggleItemPaid = async function(id, cur) {
+  await updateDoc(guildDoc('items', id), { paid: !cur });
+  await loadItems();
+  toast(!cur?'지급 완료':'지급 취소', 'var(--green)');
+};
+
+window.openItemAdd = function() {
+  openModal('아이템 추가', `
+    <div class="modal-row"><label>날짜</label><input class="si" id="iDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="modal-row"><label>아이템명 *</label><input class="si" id="iName" placeholder="아이템명"></div>
+    <div class="modal-row"><label>낙찰자</label><input class="si" id="iWinner" placeholder="캐릭명"></div>
+    <div class="modal-row"><label>낙찰가</label><input class="si" id="iPrice" placeholder="0" type="number"></div>
+  `, async () => {
+    const name = document.getElementById('iName').value.trim();
+    if (!name) throw new Error('아이템명을 입력해주세요');
+    await addDoc(guildCol('items'), {
+      date:   document.getElementById('iDate').value,
+      name,
+      winner: document.getElementById('iWinner').value.trim(),
+      price:  parseInt(document.getElementById('iPrice').value)||0,
+      paid:   false,
+      createdAt: serverTimestamp(),
+    });
+    await loadItems();
+    toast('아이템 추가 완료', 'var(--green)');
+  });
+};
+
+window.deleteItem = function(id, name) {
+  if (!confirm(`"${name}" 삭제할까요?`)) return;
+  deleteDoc(guildDoc('items', id)).then(async () => { await loadItems(); toast('삭제 완료', 'var(--green)'); });
+};
+
+// ══════════════════════════════════════════
+// 아이템가격
+// ══════════════════════════════════════════
+async function loadPrices() {
+  setSS('ing');
+  try {
+    const snap = await getDocs(guildCol('item_prices'));
+    STATE.prices = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.price||0)-(a.price||0));
+    renderPrices();
+    setSS('ok');
+  } catch(e) { setSS('err'); toast('로드 실패', 'var(--a3)'); }
+}
+
+function renderPrices() {
+  const isAdm = STATE.role === 'admin';
+  const q = filters.prices.toLowerCase();
+  const list = STATE.prices.filter(p => !q || (p.name||'').toLowerCase().includes(q));
+  document.getElementById('priceTable').innerHTML = list.map((p,i) => {
+    const actTd = isAdm
+      ? `<td><button class="btn btn-sm" style="background:none;border:1px solid rgba(240,90,90,.3);color:var(--a3);font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:12px;padding:5px 12px;border-radius:6px;cursor:pointer" onclick="deletePrice('${p.id}','${(p.name||'').replace(/'/g,"\\'")}')">삭제</button></td>` : '';
+    return `<tr>
+      <td><span class="rn">${i+1}</span></td>
+      <td style="font-weight:600">${p.name||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--gold);font-weight:700">${numFmt(p.price)}</td>
+      <td style="color:var(--t3);font-size:13px">${p.memo||'—'}</td>
+      ${actTd}
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+}
+
+window.filterPrices = function() { filters.prices=document.getElementById('priceSearch').value; renderPrices(); };
+
+window.openPriceAdd = function() {
+  openModal('아이템가격 추가', `
+    <div class="modal-row"><label>아이템명 *</label><input class="si" id="pName" placeholder="아이템명"></div>
+    <div class="modal-row"><label>기준가 *</label><input class="si" id="pPrice" placeholder="0" type="number"></div>
+    <div class="modal-row"><label>메모</label><input class="si" id="pMemo" placeholder="메모"></div>
+  `, async () => {
+    const name = document.getElementById('pName').value.trim();
+    if (!name) throw new Error('아이템명을 입력해주세요');
+    await addDoc(guildCol('item_prices'), {
+      name, price: parseInt(document.getElementById('pPrice').value)||0,
+      memo: document.getElementById('pMemo').value.trim(),
+      createdAt: serverTimestamp(),
+    });
+    await loadPrices();
+    toast('추가 완료', 'var(--green)');
+  });
+};
+
+window.deletePrice = function(id, name) {
+  if (!confirm(`"${name}" 삭제할까요?`)) return;
+  deleteDoc(guildDoc('item_prices', id)).then(async () => { await loadPrices(); toast('삭제 완료', 'var(--green)'); });
+};
+
+// ══════════════════════════════════════════
+// 컬렉션 공통 (보스컬렉/악세컬렉/안장)
+// ══════════════════════════════════════════
+async function loadColData(colName, stateKey, searchId, headId, tableId, paginationId, pageKey) {
+  setSS('ing');
+  try {
+    const snap = await getDocs(guildCol(colName));
+    // 컬럼 정의 로드
+    const configDoc = await getDoc(doc(db, 'guilds', STATE.guildId, colName+'_config', 'columns'));
+    const cols = configDoc.exists() ? (configDoc.data().cols || []) : [];
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    STATE[stateKey] = { cols, rows };
+    renderColTable(stateKey, searchId, headId, tableId, paginationId, pageKey);
+    setSS('ok');
+  } catch(e) { setSS('err'); console.error(e); toast('로드 실패', 'var(--a3)'); }
+}
+
+function renderColTable(stateKey, searchId, headId, tableId, paginationId, pageKey) {
+  const { cols, rows } = STATE[stateKey];
+  const q = (filters[stateKey]||'').toLowerCase();
+  let list = rows.filter(r => !q || (r.char||'').toLowerCase().includes(q) || (r.clan||'').toLowerCase().includes(q));
+  list.sort((a,b) => (b.totalScore||0)-(a.totalScore||0));
+
+  // 헤더
+  const headEl = document.getElementById(headId);
+  if (headEl) {
+    headEl.innerHTML = '<th>#</th><th>길드명</th><th>캐릭명</th>' +
+      cols.map(c=>`<th>${c.label||c.id}</th>`).join('') +
+      (STATE.role==='admin'?'<th>관리</th>':'');
+  }
+
+  // 행
+  const start = (pages[pageKey]-1)*PAGE_SIZE;
+  const isAdm = STATE.role==='admin';
+  document.getElementById(tableId).innerHTML = list.slice(start, start+PAGE_SIZE).map((r,i) => {
+    const cells = cols.map(c => {
+      const v = r[c.id];
+      const isO = v==='O'||v===true||v==='TRUE'||v==='o';
+      const isX = v==='X'||v==='x';
+      const display = isO
+        ? `<span class="col-o" onclick="${isAdm?`toggleCol('${stateKey}','${r.id}','${c.id}','${v}')`:''}" style="cursor:${isAdm?'pointer':'default'}">지급</span>`
+        : isX
+        ? `<span class="col-x" onclick="${isAdm?`toggleCol('${stateKey}','${r.id}','${c.id}','${v}')`:''}" style="cursor:${isAdm?'pointer':'default'}">X</span>`
+        : typeof v==='number' ? `<span style="font-family:'JetBrains Mono',monospace">${v}</span>`
+        : `<span class="col-empty" onclick="${isAdm?`toggleCol('${stateKey}','${r.id}','${c.id}','')`:''}" style="cursor:${isAdm?'pointer':'default'}">—</span>`;
+      return `<td>${display}</td>`;
+    }).join('');
+    const actTd = isAdm ? `<td><button class="btn btn-ghost btn-sm" onclick="openColEdit('${stateKey}','${r.id}','${colNameFrom(stateKey)}')">수정</button></td>` : '';
+    return `<tr>
+      <td><span class="rn">${start+i+1}</span></td>
+      <td style="color:var(--t2)">${r.clan||'—'}</td>
+      <td style="font-weight:700;color:var(--a)">${r.char||'—'}</td>
+      ${cells}${actTd}
+    </tr>`;
+  }).join('') || `<tr><td colspan="${3+cols.length+1}" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>`;
+
+  renderPagination(paginationId, list.length, pages[pageKey], `(p)=>{pages.${pageKey}=p;renderColTable('${stateKey}','${searchId}','${headId}','${tableId}','${paginationId}','${pageKey}')}`);
+}
+
+function colNameFrom(stateKey) {
+  return {boscol:'bos_collection',acccol:'acc_collection',saddle:'saddle_collection'}[stateKey]||stateKey;
+}
+
+window.toggleCol = async function(stateKey, docId, colId, curVal) {
+  const isO = curVal==='O'||curVal===true||curVal==='TRUE'||curVal==='o';
+  const isX = curVal==='X'||curVal==='x';
+  const next = isO ? 'X' : isX ? '' : 'O';
+  const colName = colNameFrom(stateKey);
+  await updateDoc(doc(db,'guilds',STATE.guildId,colName,docId), { [colId]: next });
+  // 로컬 업데이트
+  const r = STATE[stateKey].rows.find(x=>x.id===docId);
+  if (r) r[colId] = next;
+  renderColTable(stateKey, '', colName+'Head', colName+'Table', colName+'Pagination', stateKey);
+  toast(next==='O'?'지급 완료':next==='X'?'X 표시':'초기화','var(--green)');
+};
+
+window.filterBoscol   = function() { filters.boscol   = document.getElementById('boscolSearch').value;   pages.boscol=1;   renderColTable('boscol','boscolSearch','boscolHead','boscolTable','boscolPagination','boscol'); };
+window.filterAcccol   = function() { filters.acccol   = document.getElementById('acccolSearch').value;   pages.acccol=1;   renderColTable('acccol','acccolSearch','acccolHead','acccolTable','acccolPagination','acccol'); };
+window.filterSaddle   = function() { filters.saddle   = document.getElementById('saddleSearch').value;   pages.saddle=1;   renderColTable('saddle','saddleSearch','saddleHead','saddleTable','saddlePagination','saddle'); };
+window.filterAttendlog= function() { filters.attendlog= document.getElementById('attendlogSearch').value; pages.attendlog=1;renderColTable('attendlog','attendlogSearch','attendlogHead','attendlogTable','attendlogPagination','attendlog'); };
+
+// ══════════════════════════════════════════
+// 분배금
+// ══════════════════════════════════════════
+async function loadDistrib() {
+  setSS('ing');
+  try {
+    const gdoc = await getDoc(guildDocRef());
+    const gdata = gdoc.exists() ? gdoc.data() : {};
+    const total = gdata.distribTotal || 0;
+    document.getElementById('distribTotalDisplay').textContent = numFmt(total);
+    document.getElementById('distribTotalInput').value = total || '';
+
+    const members = STATE.members.filter(m => (m.totalScore||0) > 0)
+      .sort((a,b) => (b.totalScore||0)-(a.totalScore||0));
+    const totalScore = members.reduce((s,m) => s+(m.totalScore||0), 0);
+    const perPoint = totalScore > 0 ? Math.floor(total / totalScore) : 0;
+    document.getElementById('distribPerPoint').textContent = numFmt(perPoint) + '원/점';
+
+    STATE.distrib = { total, list: members, perPoint };
+    renderDistrib();
+    setSS('ok');
+  } catch(e) { setSS('err'); toast('로드 실패', 'var(--a3)'); }
+}
+
+function renderDistrib() {
+  const isAdm = STATE.role === 'admin';
+  const { list, perPoint } = STATE.distrib;
+  const totalScore = list.reduce((s,m) => s+(m.totalScore||0), 0);
+  const start = (pages.distrib-1)*PAGE_SIZE;
+  document.getElementById('distribTable').innerHTML = list.slice(start, start+PAGE_SIZE).map((m,i) => {
+    const amt = Math.floor((m.totalScore||0) * perPoint);
+    const pct = totalScore>0 ? ((m.totalScore||0)/totalScore*100).toFixed(1)+'%' : '—';
+    const paid = m.distribPaid;
+    const paidEl = isAdm
+      ? `<span class="${paid?'col-o':'col-empty'}" style="cursor:pointer" onclick="toggleDistribPaid('${m.id}',${!!paid})">${paid?'지급':'—'}</span>`
+      : `<span class="${paid?'col-o':'col-empty'}">${paid?'지급':'—'}</span>`;
+    return `<tr>
+      <td><span class="rn${(start+i)<3?' r'+(start+i+1):''}">${start+i+1}</span></td>
+      <td style="color:var(--t2)">${m.clan||'—'}</td>
+      <td style="font-weight:700;color:var(--a)">${m.char||'—'}</td>
+      <td>${numFmt(m.power)}</td>
+      <td style="color:var(--gold)">${numFmt(m.totalScore)}</td>
+      <td>${pctBadge(pct)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green)">${numFmt(amt)}</td>
+      <td style="color:var(--t3)">${m.distribChar||m.char||'—'}</td>
+      <td>${paidEl}</td>
+      ${isAdm?'<td></td>':''}
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--t3);padding:24px">데이터 없음</td></tr>';
+  renderPagination('distribPagination', list.length, pages.distrib, `(p)=>{pages.distrib=p;renderDistrib()}`);
+}
+
+window.toggleDistribPaid = async function(id, cur) {
+  await updateDoc(guildDoc('members', id), { distribPaid: !cur });
+  await loadDistrib();
+  toast(!cur?'지급 완료':'지급 취소', 'var(--green)');
+};
+
+window.saveDistribTotal = async function() {
+  const v = parseInt(document.getElementById('distribTotalInput').value)||0;
+  await updateDoc(guildDocRef(), { distribTotal: v });
+  await loadDistrib();
+  toast('저장 완료', 'var(--green)');
+};
+
+window.resetDistrib = async function() {
+  if (!confirm('분배 지급 여부를 전체 초기화할까요?')) return;
+  const snap = await getDocs(guildCol('members'));
+  const batch_size = 500;
+  let ops = [];
+  for (const d of snap.docs) {
+    ops.push(updateDoc(guildDoc('members', d.id), { distribPaid: false }));
+    if (ops.length >= batch_size) { await Promise.all(ops); ops = []; }
+  }
+  if (ops.length) await Promise.all(ops);
+  await loadDistrib();
+  toast('분배 초기화 완료', 'var(--green)');
+};
+
+window.resetScore = async function() {
+  if (!confirm('참여점수를 전체 초기화할까요? 되돌릴 수 없습니다.')) return;
+  const snap = await getDocs(guildCol('members'));
+  let ops = [];
+  for (const d of snap.docs) {
+    ops.push(updateDoc(guildDoc('members', d.id), { totalScore:0, bossCount:0 }));
+  }
+  await Promise.all(ops);
+  await loadMembers();
+  renderMembers();
+  toast('점수 초기화 완료', 'var(--green)');
+};
+
+// ══════════════════════════════════════════
+// 메인 대시보드
+// ══════════════════════════════════════════
+function renderMain() {
+  const members = STATE.members;
+  const total = members.length;
+  const avgScore = total ? Math.round(members.reduce((s,m)=>(s+(m.totalScore||0)),0)/total) : 0;
+  const totalKill = members.reduce((s,m)=>(s+(m.bossCount||0)),0);
+
+  document.getElementById('statTotal').textContent = total+'명';
+  document.getElementById('statAvgScore').textContent = numFmt(avgScore);
+  document.getElementById('statBossKill').textContent = numFmt(totalKill);
+  document.getElementById('statSeason').textContent = new Date().toLocaleDateString('ko-KR',{month:'long'});
+
+  // TOP 10
+  const top10 = [...members].sort((a,b)=>(b.totalScore||0)-(a.totalScore||0)).slice(0,10);
+  document.getElementById('scoreTop10').innerHTML = top10.map((m,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--bd);gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="rn${i<3?' r'+(i+1):''}" style="min-width:24px;text-align:center">${i+1}</span>
+        <div>
+          <div style="font-weight:700;color:var(--a)">${m.char||'—'}</div>
+          <div style="font-size:12px;color:var(--t3)">${m.clan||''}</div>
+        </div>
+      </div>
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold)">${numFmt(m.totalScore)}</span>
+    </div>
+  `).join('') || '<div style="color:var(--t3);font-size:13px;padding:12px 0">데이터 없음</div>';
+
+  // 최근 보스 처치 (세션에서 가져옴)
+  document.getElementById('recentBoss').innerHTML = '<div style="color:var(--t3);font-size:13px;padding:12px 0">보스 처치 기록을 불러오려면 새로고침하세요</div>';
+}
+
+// ══════════════════════════════════════════
+// 페이지 전환
+// ══════════════════════════════════════════
+const PAGE_LOADERS = {
+  members:   () => renderMembers(),
+  bid:       () => loadBid(),
+  items:     () => loadItems(),
+  prices:    () => loadPrices(),
+  boscol:    () => loadColData('bos_collection','boscol','boscolSearch','boscolHead','boscolTable','boscolPagination','boscol'),
+  acccol:    () => loadColData('acc_collection','acccol','acccolSearch','acccolHead','acccolTable','acccolPagination','acccol'),
+  saddle:    () => loadColData('saddle_collection','saddle','saddleSearch','saddleHead','saddleTable','saddlePagination','saddle'),
+  attendlog: () => loadColData('attend_log','attendlog','attendlogSearch','attendlogHead','attendlogTable','attendlogPagination','attendlog'),
+  distrib:   () => loadDistrib(),
+  bossscores:() => renderBossScores(),
+  main:      () => renderMain(),
+};
+
+window.showPage = function(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const pg = document.getElementById('page-'+name);
+  if (pg) pg.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (PAGE_LOADERS[name]) PAGE_LOADERS[name]();
+};
+
+// ══════════════════════════════════════════
+// 공용 모달
+// ══════════════════════════════════════════
+let _modalAction = null;
+
+function openModal(title, bodyHtml, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  _modalAction = onConfirm;
+  document.getElementById('modalBg').classList.add('open');
+}
+
+window.closeModal = function() {
+  document.getElementById('modalBg').classList.remove('open');
+  _modalAction = null;
+};
+
+window.modalConfirm = async function() {
+  if (!_modalAction) return;
+  const btn = document.getElementById('modalConfirmBtn');
+  btn.disabled = true; btn.textContent = '처리 중...';
+  try {
+    await _modalAction();
+    closeModal();
+  } catch(e) { toast(e.message, 'var(--a3)'); }
+  btn.disabled = false; btn.textContent = '확인';
+};
+
+// 모달 외부 클릭으로 닫기
+document.getElementById('modalBg').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ══════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════
+(async function init() {
+  // 이 파일은 할래말래 전용입니다
+  const GUILD_ID = '1481674237629563056';
+
+  await loadGuilds(GUILD_ID);
+
+  // 세션 복구
+  const savedGuildId = sessionStorage.getItem('guildId');
+  const savedRole    = sessionStorage.getItem('role');
+
+  if (savedGuildId && savedRole && savedGuildId === GUILD_ID && STATE.guilds.find(g=>g.id===GUILD_ID)) {
+    STATE.guildId   = GUILD_ID;
+    STATE.guildName = STATE.guilds.find(g=>g.id===GUILD_ID)?.name || '할래말래';
+    STATE.role      = savedRole;
+
+    document.getElementById('guildBadge').textContent = STATE.guildName;
+    document.getElementById('roleBadge').textContent  = savedRole==='admin'?'관리자':'멤버';
+    document.getElementById('roleBadge').className    = 'role-badge '+(savedRole==='admin'?'role-admin':'role-member');
+
+    ['memberAddBtn','itemAddBtn','priceAddBtn','bossAddBtn'].forEach(id => {
+      const el=document.getElementById(id);
+      if (el) el.style.display = savedRole==='admin'?'':'none';
+    });
+    ['memberActionHead','itemActionHead','priceActionHead','bossActionHead','distribActionHead'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.textContent = savedRole==='admin'?'관리':'';
+    });
+    document.getElementById('distribAdminCard').style.display = savedRole==='admin'?'':'none';
+
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    await loadAll();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+  }
+
+  document.getElementById('loadingScreen').style.display='none';
+})();
+
+// 전역 함수로 노출
+window.doLogin = doLogin;
+</script>
+</body>
+</html>
